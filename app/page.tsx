@@ -6,7 +6,8 @@ export default function Home() {
   const [restaurantList, setRestaurantList] = useState('');
   const [preferences, setPreferences] = useState('');
   const [errors, setErrors] = useState({ restaurantList: '', preferences: '' });
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [recommendation, setRecommendation] = useState<string | null>(null);
 
   const handleSubmit = async (e: { preventDefault: () => void; }) => {
     e.preventDefault();
@@ -27,6 +28,9 @@ export default function Home() {
     setErrors(newErrors);
 
     if (!hasError) {
+      setLoading(true);
+      setRecommendation(null); // Reset recommendation before starting a new request
+
       try {
         const summarizedList = await summarizeRestaurants(restaurantList);
         const places = summarizedList.split(",");
@@ -44,10 +48,11 @@ export default function Home() {
         }
 
         const recommendation = await recommendationToUser(preferences, allRestaurantsInfo);
-        console.log(recommendation);
-        setIsSubmitted(true);
+        setRecommendation(recommendation);
       } catch (error) {
         console.log(error);
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -129,12 +134,19 @@ export default function Home() {
           >
             Submit
           </button>
-          {isSubmitted && (
-            <p className="mt-4 text-green-500 text-lg font-bold">
-              You clicked submit
-            </p>
-          )}
         </div>
+
+        {loading && (
+          <div className="mt-4 text-center">
+            <p className="text-blue-500">Loading...</p>
+          </div>
+        )}
+
+        {recommendation && (
+          <div className="mt-4 text-center">
+            <p className="text-green-500 text-lg font-bold">Recommendation: {recommendation}</p>
+          </div>
+        )}
       </form>
     </div>
   );
