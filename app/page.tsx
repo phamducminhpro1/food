@@ -1,9 +1,6 @@
-// page.tsx
-
-"use client"; // This directive enables client-side features
-
+"use client";
 import { useState } from 'react';
-import Image from 'next/image';
+import axios from 'axios';
 
 export default function Home() {
   const [restaurantList, setRestaurantList] = useState('');
@@ -11,7 +8,7 @@ export default function Home() {
   const [errors, setErrors] = useState({ restaurantList: '', preferences: '' });
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleSubmit = (e: { preventDefault: () => void; }) => {
+  const handleSubmit = async (e: { preventDefault: () => void; }) => {
     e.preventDefault();
     let hasError = false;
 
@@ -30,10 +27,69 @@ export default function Home() {
     setErrors(newErrors);
 
     if (!hasError) {
-      // Process the form submission
-      console.log('Restaurant List:', restaurantList);
-      console.log('Preferences:', preferences);
-      setIsSubmitted(true);
+      try {
+        const summarizedList = await summarizeRestaurants(restaurantList);
+        const places = summarizedList.split(",");
+        console.log(places);
+        const allRestaurantsInfo: { [key: string]: any } = {};
+
+        for (const place of places) {
+          const placeId = await getPlaceId(place.trim());
+          if (placeId) {
+            const details = await getPlaceDetails(placeId);
+            if (details) {
+              allRestaurantsInfo[place.trim()] = details;
+            }
+          }
+        }
+
+        const recommendation = await recommendationToUser(preferences, allRestaurantsInfo);
+        console.log(recommendation);
+        setIsSubmitted(true);
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  };
+
+  const getPlaceId = async (placeName: string) => {
+    try {
+      const response = await axios.get('/api/getPlaceId', { params: { placeName } });
+      return response.data.placeId;
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
+  };
+
+  const getPlaceDetails = async (placeId: string) => {
+    try {
+      const response = await axios.get('/api/getPlaceDetails', { params: { placeId } });
+      return response.data;
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
+  };
+
+  const summarizeRestaurants = async (restaurants: string) => {
+    try {
+      const response = await axios.post('/api/openai', { prompt: `Here is a list of restaurants:\n${restaurants}\n\nSummarize the list by providing just the restaurant names in format restaurant1, restaurant2, etc` });
+      return response.data.response;
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
+  };
+
+  const recommendationToUser = async (userText: string, allRestaurantInfo: any) => {
+    try {
+      const prompt = `Here is the information about the restaurants that I want you to choose from:\n${JSON.stringify(allRestaurantInfo)}\n\n${userText}. I want you to give me one name of the restaurant that you recommend.`;
+      const response = await axios.post('/api/openai', { prompt });
+      return response.data.response;
+    } catch (error) {
+      console.error(error);
+      return null;
     }
   };
 
@@ -74,10 +130,10 @@ export default function Home() {
             Submit
           </button>
           {isSubmitted && (
-        <p className="mt-4 text-green-500 text-lg font-bold">
-          You clicked submit You clicked submit You clicked submit You clicked submit
-        </p>
-      )}
+            <p className="mt-4 text-green-500 text-lg font-bold">
+              You clicked submit
+            </p>
+          )}
         </div>
       </form>
     </div>
