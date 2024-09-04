@@ -4,61 +4,50 @@ import axios from 'axios';
 import cheerio from 'cheerio';
 
 export default function Home() {
+  const [cuisine, setCuisine] = useState('');
+  const [location, setLocation] = useState('');
+  const [transportation, setTransportation] = useState('');
   const [restaurantList, setRestaurantList] = useState('');
-  const [preferences, setPreferences] = useState('');
-  const [errors, setErrors] = useState({ restaurantList: '', preferences: '' });
+  const [otherPreferences, setOtherPreferences] = useState('');
   const [loading, setLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<string | null>(null);
 
-  const handleSubmit = async (e: { preventDefault: () => void; }) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    let hasError = false;
+    setLoading(true);
+    setRecommendation(null);
 
-    const newErrors = { restaurantList: '', preferences: '' };
+    // Combine all preferences
+    const combinedPreferences = `Cuisine: ${cuisine}\nLocation: ${location}\nTransportation: ${transportation}\nOther Preferences: ${otherPreferences}`;
+    console.log('Combined Preferences:', combinedPreferences);
+    
+    try {
+      const scrapedInfo = await extractLinksAndScrape(restaurantList);
+      const summarizedList = await summarizeRestaurants(restaurantList);
+      console.log("Summarized list:", summarizedList);
+      const places = summarizedList.split(",");
+      console.log("Places:", places);
+      const allRestaurantsInfo: { [key: string]: any } = {};
 
-    if (!restaurantList.trim()) {
-      newErrors.restaurantList = 'Please paste your restaurant lists.';
-      hasError = true;
-    }
-
-    if (!preferences.trim()) {
-      newErrors.preferences = 'What are your preferences for today?';
-      hasError = true;
-    }
-
-    setErrors(newErrors);
-
-    if (!hasError) {
-      setLoading(true);
-      setRecommendation(null); // Reset recommendation before starting a new request
-      try {
-        const scrapedInfo = await extractLinksAndScrape(restaurantList);
-        const summarizedList = await summarizeRestaurants(restaurantList);
-        console.log("Summarized list:", summarizedList);
-        const places = summarizedList.split(",");
-        console.log("Places:", places);
-        const allRestaurantsInfo: { [key: string]: any } = {};
-
-        for (const place of places) {
-          const placeId = await getPlaceId(place.trim());
-          if (placeId) {
-            const details = await getPlaceDetails(placeId);
-            if (details) {
-              allRestaurantsInfo[place.trim()] = details;
-            }
+      for (const place of places) {
+        const placeId = await getPlaceId(place.trim());
+        if (placeId) {
+          const details = await getPlaceDetails(placeId);
+          if (details) {
+            allRestaurantsInfo[place.trim()] = details;
           }
         }
-
-        // Merge scraped info with allRestaurantsInfo
-        Object.assign(allRestaurantsInfo, scrapedInfo);
-
-        const recommendation = await recommendationToUser(preferences, allRestaurantsInfo);
-        setRecommendation(recommendation);
-      } catch (error) {
-        console.log(error);
-      } finally {
-        setLoading(false);
       }
+
+      // Merge scraped info with allRestaurantsInfo
+      Object.assign(allRestaurantsInfo, scrapedInfo);
+
+      const recommendation = await recommendationToUser(combinedPreferences, allRestaurantsInfo);
+      setRecommendation(recommendation);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -131,23 +120,29 @@ export default function Home() {
       if (coordMatch) {
         [, lat, lng] = coordMatch;
       }
+      
+      //TODO: I will get the current location from the user. 
 
+      
+      console.log("Call find place API with Lat, lng and place name:", lat, lng, placeName);
       // Make request to Find Place API
-      const response = await axios.get('/api/findplace', {
-        params: {
-          input: placeName,
-          locationbias: `circle:5000@${lat},${lng}`
-        }
-      });
+      return "ChIJeTNZ0pxZwokRg3Z1vnWyTmg"
+      // const response = await axios.get('/api/findplace', {
+      //   params: {
+      //     input: placeName,
+      //     inputtype: 'textquery',
+      //     locationbias: `circle:5000@${lat},${lng}`,
+      //   }
+      // });
 
-      console.log('Find Place API response:', response.data);
+      // console.log('Find Place API response:', response.data);
 
-      if (response.data.candidates && response.data.candidates.length > 0) {
-        return response.data.candidates[0].place_id;
-      } else {
-        console.error('No place found');
-        return null;
-      }
+      // if (response.data.candidates && response.data.candidates.length > 0) {
+      //   return response.data.candidates[0].place_id;
+      // } else {
+      //   console.error('No place found');
+      //   return null;
+      // }
     } catch (error) {
       console.error('Error getting place ID from URL:', error);
       return null;
@@ -198,42 +193,84 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <form onSubmit={handleSubmit} className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg">
-        <div className="mb-4">
-          <label htmlFor="restaurantList" className="block text-gray-700 text-sm font-bold mb-2">
-            Please paste your restaurant lists:
-          </label>
-          <textarea
-            id="restaurantList"
-            value={restaurantList}
-            onChange={(e) => setRestaurantList(e.target.value)}
-            className={`w-full p-2 border ${errors.restaurantList ? 'border-red-500' : 'border-gray-300'} rounded`}
-            placeholder="Paste your restaurant list here..."
-          />
-          {errors.restaurantList && <p className="text-red-500 text-xs italic">{errors.restaurantList}</p>}
-        </div>
-        <div className="mb-4">
-          <label htmlFor="preferences" className="block text-gray-700 text-sm font-bold mb-2">
-            What are your preferences for today?
-          </label>
-          <textarea
-            id="preferences"
-            value={preferences}
-            onChange={(e) => setPreferences(e.target.value)}
-            className={`w-full p-2 border ${errors.preferences ? 'border-red-500' : 'border-gray-300'} rounded`}
-            placeholder="Enter your preferences here..."
-          />
-          {errors.preferences && <p className="text-red-500 text-xs italic">{errors.preferences}</p>}
-        </div>
-        <div className="flex items-center justify-between">
-          <button
-            type="submit"
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Submit
-          </button>
-        </div>
+    <div className="min-h-screen flex items-center justify-center p-6 bg-gray-100">
+      <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg">
+        <h1 className="text-3xl font-bold mb-6 text-center">FoodTrail</h1>
+        <h2 className="text-xl font-semibold mb-4">Criteria</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label htmlFor="cuisine" className="block text-gray-700 text-sm font-bold mb-2">
+              Cuisine
+            </label>
+            <input
+              type="text"
+              id="cuisine"
+              value={cuisine}
+              onChange={(e) => setCuisine(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded bg-yellow-50"
+              placeholder="Type your preferred cuisine here"
+            />
+          </div>
+          <div className="mb-4">
+            <label htmlFor="location" className="block text-gray-700 text-sm font-bold mb-2">
+              Location (City)
+            </label>
+            <input
+              type="text"
+              id="location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded bg-yellow-50"
+              placeholder="e.g. near this subway station, under 30 mins for travel..."
+            />
+          </div>
+          <div className="mb-4">
+            <label htmlFor="transportation" className="block text-gray-700 text-sm font-bold mb-2">
+              Transportation/Distance (optional)
+            </label>
+            <input
+              type="text"
+              id="transportation"
+              value={transportation}
+              onChange={(e) => setTransportation(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded bg-yellow-50"
+              placeholder="e.g. near this subway station, under 30 mins for travel..."
+            />
+          </div>
+          <div className="mb-4">
+            <label htmlFor="restaurantList" className="block text-gray-700 text-sm font-bold mb-2">
+              My list (optional)
+            </label>
+            <textarea
+              id="restaurantList"
+              value={restaurantList}
+              onChange={(e) => setRestaurantList(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded bg-yellow-50"
+              placeholder="Paste your list here"
+            />
+          </div>
+          <div className="mb-4">
+            <label htmlFor="otherPreferences" className="block text-gray-700 text-sm font-bold mb-2">
+              Notes and other preferences
+            </label>
+            <textarea
+              id="otherPreferences"
+              value={otherPreferences}
+              onChange={(e) => setOtherPreferences(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded bg-yellow-50"
+              placeholder="Enter other preferences or special requests..."
+              rows={3}
+            />
+          </div>
+          <div className="flex items-center justify-center">
+            <button
+              type="submit"
+              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full"
+            >
+              Give me a recommendation
+            </button>
+          </div>
+        </form>
 
         {loading && (
           <div className="mt-4 text-center">
@@ -246,7 +283,7 @@ export default function Home() {
             <p className="text-green-500 text-lg font-bold">Recommendation: {recommendation}</p>
           </div>
         )}
-      </form>
+      </div>
     </div>
   );
 }

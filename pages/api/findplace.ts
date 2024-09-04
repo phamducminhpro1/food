@@ -12,13 +12,13 @@ export default async function handler(
   }
 
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  
   if (!apiKey) {
     console.error('GOOGLE_MAPS_API_KEY is not set');
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
   try {
+    console.log('Making request to Google Maps API with params:', { input, locationbias });
     const response = await axios.get('https://maps.googleapis.com/maps/api/place/findplacefromtext/json', {
       params: {
         key: apiKey,
