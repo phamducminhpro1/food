@@ -9,10 +9,10 @@ sys.stdout.reconfigure(encoding='utf-8')
 load_dotenv()
 
 # Set up your OpenAI API key
-OPENAPI = os.getenv('OPENAPI')
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # Your Google API key
-GOOGLE_API = os.getenv('GOOGLE_API')
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 
 # API endpoint for Find Place API
 find_place_endpoint = 'https://maps.googleapis.com/maps/api/place/findplacefromtext/json'
@@ -33,7 +33,7 @@ def summarize_restaurants(restaurants):
     prompt = f"Here is a list of restaurants:\n{restaurant_list_str}\n\nSummarize the list by providing just the restaurant names in format restaruant1, restaurant2, etc"
     client = OpenAI(
         # This is the default and can be omitted
-        api_key=OPENAPI,
+        api_key=OPENAI_API_KEY,
     )
 
     response = client.chat.completions.create(
@@ -58,7 +58,7 @@ def get_place_id(place_name):
         'input': place_name,
         'inputtype': 'textquery',
         'fields': 'place_id',
-        'key': GOOGLE_API
+        'key': GOOGLE_API_KEY
     }
     response = requests.get(find_place_endpoint, params=params)
     result = response.json()
@@ -71,10 +71,11 @@ def get_place_id(place_name):
 
 # Function to get place details using Place Details API
 def get_place_details(place_id):
+    print(GOOGLE_API_KEY)
     params = {
         'place_id': place_id,
         'fields': 'name,formatted_address,geometry,international_phone_number,website,opening_hours,rating,review,user_ratings_total',
-        'key': GOOGLE_API
+        'key': GOOGLE_API_KEY
     }
     response = requests.get(place_details_endpoint, params=params)
     return response.json()
@@ -85,7 +86,7 @@ def recommendation_to_user(user_text, all_restaurant_info):
     prompt = f"Here is the informations about the restaurants that I want you to choose from:\n{all_restaurant_info}\n\n. {user_text}. I want you to give me one name of the restaurant that you recommend"
     client = OpenAI(
         # This is the default and can be omitted
-        api_key=OPENAPI,
+        api_key=OPENAI_API_KEY,
     )
 
     response = client.chat.completions.create(
@@ -120,4 +121,5 @@ def main():
 
     
 if __name__ == "__main__":
-    main()
+    print(get_place_details("GhIJVYZxN4i9QkARe_B_7JqnWsA"))
+    

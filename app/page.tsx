@@ -1,6 +1,7 @@
 "use client";
 import { useState } from 'react';
 import axios from 'axios';
+import cheerio from 'cheerio';
 
 export default function Home() {
   const [restaurantList, setRestaurantList] = useState('');
@@ -30,11 +31,12 @@ export default function Home() {
     if (!hasError) {
       setLoading(true);
       setRecommendation(null); // Reset recommendation before starting a new request
-
       try {
+        const scrapedInfo = await extractLinksAndScrape(restaurantList);
         const summarizedList = await summarizeRestaurants(restaurantList);
+        console.log("Summarized list:", summarizedList);
         const places = summarizedList.split(",");
-        console.log(places);
+        console.log("Places:", places);
         const allRestaurantsInfo: { [key: string]: any } = {};
 
         for (const place of places) {
@@ -47,6 +49,9 @@ export default function Home() {
           }
         }
 
+        // Merge scraped info with allRestaurantsInfo
+        Object.assign(allRestaurantsInfo, scrapedInfo);
+
         const recommendation = await recommendationToUser(preferences, allRestaurantsInfo);
         setRecommendation(recommendation);
       } catch (error) {
@@ -54,6 +59,98 @@ export default function Home() {
       } finally {
         setLoading(false);
       }
+    }
+  };
+
+  const extractLinksAndScrape = async (text: string) => {
+    const urlRegex = /(https?:\/\/)?(?:(?:maps\.app\.goo\.gl|(?:www\.)?google\.com\/maps)\/[^\s]+)/g;
+    const links = text.match(urlRegex) || [];
+    console.log("Found links:", links);
+    const scrapedInfo: { [key: string]: string } = {};
+
+    for (const link of links) {
+      try {
+        if (link.includes('maps.app.goo.gl') || link.includes('google.com/maps')) {
+          let expandedUrl = link;
+          if (link.includes('maps.app.goo.gl')) {
+            expandedUrl = await expandShortUrl(link);
+            console.log("Expanded URL:", expandedUrl);
+          }
+          const placeId = await getPlaceIdFromUrl(expandedUrl);
+          if (placeId) {
+            const details = await getPlaceDetails(placeId);
+            console.log("Details, placeId:", details, placeId);
+            if (details) {
+              scrapedInfo[link] = JSON.stringify(details);
+              console.log(`Scraped information for ${link}:`, details);
+            }
+          }
+        } else {
+          // Handle other types of links if needed
+          console.log(`Skipping non-Google Maps link: ${link}`);
+        }
+      } catch (error) {
+        console.error(`Error processing ${link}:`, error);
+      }
+    }
+
+    return scrapedInfo;
+  };
+
+  const expandShortUrl = async (shortUrl: string): Promise<string> => {
+    try {
+      // Ensure the URL starts with https://
+      if (!shortUrl.startsWith('http')) {
+        shortUrl = 'https://' + shortUrl;
+      }
+  
+      const response = await axios.get('/api/expandUrl', { params: { url: shortUrl } });
+      return response.data.expandedUrl;
+    } catch (error) {
+      console.error('Error expanding short URL:', error);
+      return shortUrl;
+    }
+  };
+
+  const getPlaceIdFromUrl = async (url: string): Promise<string | null> => {
+    try {
+      // Extract place name from the URL
+      const nameMatch = url.match(/\/maps\/place\/([^/@]+)/);
+      if (!nameMatch) {
+        console.error('Could not extract place name from URL');
+        return null;
+      }
+
+      const placeName = decodeURIComponent(nameMatch[1]);
+      console.log('Extracted place name:', placeName);
+
+      // Extract latitude and longitude from the URL (if available), otherwise defaults to San Francisco coordinates
+      const coordMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      let lat = '37.7749';  // Default to San Francisco
+      let lng = '-122.4194';
+      if (coordMatch) {
+        [, lat, lng] = coordMatch;
+      }
+
+      // Make request to Find Place API
+      const response = await axios.get('/api/findplace', {
+        params: {
+          input: placeName,
+          locationbias: `circle:5000@${lat},${lng}`
+        }
+      });
+
+      console.log('Find Place API response:', response.data);
+
+      if (response.data.candidates && response.data.candidates.length > 0) {
+        return response.data.candidates[0].place_id;
+      } else {
+        console.error('No place found');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error getting place ID from URL:', error);
+      return null;
     }
   };
 
@@ -79,7 +176,7 @@ export default function Home() {
 
   const summarizeRestaurants = async (restaurants: string) => {
     try {
-      const response = await axios.post('/api/openai', { prompt: `Here is a list of restaurants:\n${restaurants}\n\nSummarize the list by providing just the restaurant names in format restaurant1, restaurant2, etc` });
+      const response = await axios.post('/api/openai', { prompt: `Here is a list of restaurants:\n${restaurants}\n\nSummarize the list by providing just the restaurant names in format restaurant1, restaurant2, etc. If you could not find any restaurants, please return ""` });
       return response.data.response;
     } catch (error) {
       console.error(error);
@@ -88,8 +185,10 @@ export default function Home() {
   };
 
   const recommendationToUser = async (userText: string, allRestaurantInfo: any) => {
+    console.log("Get to recommendationToUser");
+    console.log(allRestaurantInfo);
     try {
-      const prompt = `Here is the information about the restaurants that I want you to choose from:\n${JSON.stringify(allRestaurantInfo)}\n\n${userText}. I want you to give me one name of the restaurant that you recommend.`;
+      const prompt = `Here is the information about the restaurants that I want you to choose from:\n${JSON.stringify(allRestaurantInfo)}\n\n${userText}. I want you to give me one name of the restaurant that you recommend. If there are any scraped websites, please consider that information as well.`;
       const response = await axios.post('/api/openai', { prompt });
       return response.data.response;
     } catch (error) {
