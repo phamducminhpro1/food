@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import cheerio from 'cheerio';
 
@@ -11,11 +11,43 @@ export default function Home() {
   const [otherPreferences, setOtherPreferences] = useState('');
   const [loading, setLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState({ lat: '37.7749', lng: '-122.4194' });
+
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude.toString(),
+            lng: position.coords.longitude.toString()
+          });
+          console.log("User location:", position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+        }
+      );
+    } else {
+      console.log("Geolocation is not available in this browser.");
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setRecommendation(null);
+
+    // Log user input including location
+    // console.log('User Input:');
+    // console.log('Cuisine:', cuisine);
+    // console.log('Location:', location);
+    // console.log('Transportation:', transportation);
+    // console.log('Restaurant List:', restaurantList);
+    // console.log('Other Preferences:', otherPreferences);
+    // console.log('User Location:', userLocation);
+
+    // Use userLocation in your API calls or logic
+    const { lat, lng } = userLocation;
 
     // Combine all preferences
     const combinedPreferences = `Cuisine: ${cuisine}\nLocation: ${location}\nTransportation: ${transportation}\nOther Preferences: ${otherPreferences}`;
@@ -126,23 +158,23 @@ export default function Home() {
       
       console.log("Call find place API with Lat, lng and place name:", lat, lng, placeName);
       // Make request to Find Place API
-      return "ChIJeTNZ0pxZwokRg3Z1vnWyTmg"
-      // const response = await axios.get('/api/findplace', {
-      //   params: {
-      //     input: placeName,
-      //     inputtype: 'textquery',
-      //     locationbias: `circle:5000@${lat},${lng}`,
-      //   }
-      // });
+      
+      const response = await axios.get('/api/findplace', {
+        params: {
+          input: placeName,
+          inputtype: 'textquery',
+          locationbias: `circle:5000@${lat},${lng}`,
+        }
+      });
 
-      // console.log('Find Place API response:', response.data);
+      console.log('Find Place API response:', response.data);
 
-      // if (response.data.candidates && response.data.candidates.length > 0) {
-      //   return response.data.candidates[0].place_id;
-      // } else {
-      //   console.error('No place found');
-      //   return null;
-      // }
+      if (response.data.candidates && response.data.candidates.length > 0) {
+        return response.data.candidates[0].place_id;
+      } else {
+        console.error('No place found');
+        return null;
+      }
     } catch (error) {
       console.error('Error getting place ID from URL:', error);
       return null;

@@ -11,7 +11,7 @@ export default async function handler(
     return res.status(400).json({ error: 'Input parameter is required' });
   }
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) {
     console.error('GOOGLE_MAPS_API_KEY is not set');
     return res.status(500).json({ error: 'Server configuration error' });
