@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import cheerio from 'cheerio';
+import EmbeddedContent from './components/EmbeddedContent';
 
 export default function Home() {
   const [cuisine, setCuisine] = useState('');
@@ -12,6 +12,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState({ lat: '37.7749', lng: '-122.4194' });
+  const [embeddedUrl, setEmbeddedUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -217,6 +218,18 @@ export default function Home() {
     try {
       const prompt = `Here is the information about the restaurants that I want you to choose from:\n${JSON.stringify(allRestaurantInfo)}\n\n${userText}. I want you to give me one name of the restaurant that you recommend. If there are any scraped websites, please consider that information as well.`;
       const response = await axios.post('/api/openai', { prompt });
+      
+      // Check for URL in the recommendation
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const urls = response.data.response.match(urlRegex);
+      // let urls = ['http://www.taberunomu.com/']
+      console.log("urls:", urls);
+      if (urls && urls.length > 0) {
+        setEmbeddedUrl(urls[0]);
+      } else {
+        setEmbeddedUrl(null);
+      }
+
       return response.data.response;
     } catch (error) {
       console.error(error);
@@ -313,6 +326,7 @@ export default function Home() {
         {recommendation && (
           <div className="mt-4 text-center">
             <p className="text-green-500 text-lg font-bold">Recommendation: {recommendation}</p>
+            {embeddedUrl && <EmbeddedContent url={embeddedUrl} />}
           </div>
         )}
       </div>
