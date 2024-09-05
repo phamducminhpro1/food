@@ -216,7 +216,7 @@ export default function Home() {
     console.log("Get to recommendationToUser");
     console.log(allRestaurantInfo);
     try {
-      const prompt = `Here is the information about the restaurants that I want you to choose from:\n${JSON.stringify(allRestaurantInfo)}\n\n${userText}. I want you to give me one name of the restaurant that you recommend. If there are any scraped websites, please consider that information as well.`;
+      const prompt = `Here is the information about the restaurants that I want you to choose from:\n${JSON.stringify(allRestaurantInfo)}\n\n${userText}. I want you to give me one name and the link of the website of the restaurant that you recommend. If there are any scraped websites, please consider that information as well.`;
       const response = await axios.post('/api/openai', { prompt });
       
       // Check for URL in the recommendation
@@ -231,7 +231,9 @@ export default function Home() {
         }
         // Remove trailing punctuation
         url = url.replace(/[.,;:!?)]$/, '');
-        console.log("urls:", urls);
+        // Use the hardcoded URL
+        // url = "https://www.google.com/maps/place/Susuru+Ramen/@40.7246839,-152.0005254,4z/data=!4m10!1m3!11m2!2smbYUqCVqvg0IlPZuGmIQNsGvNDQsQw!3e3!3m5!1s0x89c25f9b142d6e23:0x304cd8c57ee5e21b!8m2!3d40.75567!4d-73.927344!16s%2Fg%2F11n5qbt5_5?entry=ttu&g_ep=EgoyMDI0MDkwMi4xIKXMDSoASAFQAw%3D%3D";
+        console.log("This is the urls:", url);
         setEmbeddedUrl(url);
       } else {
         setEmbeddedUrl(null);
