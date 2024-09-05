@@ -220,12 +220,19 @@ export default function Home() {
       const response = await axios.post('/api/openai', { prompt });
       
       // Check for URL in the recommendation
-      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const urlRegex = /(https?:\/\/[^\s]+[^\s.,;:!?)]?)(?=[.,;:!?]?\s|$)/g;
       const urls = response.data.response.match(urlRegex);
-      // let urls = ['http://www.taberunomu.com/']
-      console.log("urls:", urls);
       if (urls && urls.length > 0) {
-        setEmbeddedUrl(urls[0]);
+        let url = urls[0];
+        // Remove closing parenthesis and anything after the last forward slash
+        const lastSlashIndex = url.lastIndexOf('/');
+        if (lastSlashIndex !== -1) {
+          url = url.substring(0, lastSlashIndex + 1);
+        }
+        // Remove trailing punctuation
+        url = url.replace(/[.,;:!?)]$/, '');
+        console.log("urls:", urls);
+        setEmbeddedUrl(url);
       } else {
         setEmbeddedUrl(null);
       }

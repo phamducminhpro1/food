@@ -32,8 +32,7 @@ const EmbeddedContent: React.FC<EmbeddedContentProps> = ({ url }) => {
       <iframe
         srcDoc={content}
         title="Embedded content"
-        width="100%"
-        height="400px"
+        className="w-full h-[400px] md:h-[600px]"
         sandbox="allow-scripts"
       />
     </div>
