@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import EmbeddedContent from './components/EmbeddedContent';
 import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/solid';
+import Image from 'next/image';
 
 export default function Home() {
   const [location, setLocation] = useState('');
@@ -18,26 +19,40 @@ export default function Home() {
 
   const getUserLocation = useCallback(() => {
     if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude.toString(),
-            lng: position.coords.longitude.toString()
-          });
-          console.log("User location:", position.coords.latitude, position.coords.longitude);
-          // You might want to update the location input or perform other actions here
-          setLocation("Current Location");
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          alert("Unable to retrieve your location. Please enter it manually.");
+      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+        if (result.state === 'granted') {
+          // Permission already granted, get location
+          getPosition();
+        } else if (result.state === 'prompt') {
+          // Permission hasn't been requested yet, clicking will trigger the browser's permission prompt
+          getPosition();
+        } else if (result.state === 'denied') {
+          // Permission has been denied
+          alert("Location permission is denied. Please enable it in your browser settings.");
         }
-      );
+      });
     } else {
       console.log("Geolocation is not available in this browser.");
       alert("Geolocation is not supported by your browser. Please enter your location manually.");
     }
   }, []);
+
+  const getPosition = () => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude.toString(),
+          lng: position.coords.longitude.toString()
+        });
+        console.log("User location:", position.coords.latitude, position.coords.longitude);
+        setLocation("Current Location");
+      },
+      (error) => {
+        console.error("Error getting location:", error);
+        alert("Unable to retrieve your location. Please enter it manually.");
+      }
+    );
+  };
 
   useEffect(() => {
     getUserLocation();
@@ -136,7 +151,15 @@ export default function Home() {
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-white">
       <div className="w-full max-w-md bg-yellow-50 p-6 rounded-lg shadow-lg">
-        <h1 className="text-3xl font-bold mb-6 text-center">I don't know where to eat</h1>
+        <div className="mb-4 text-center">
+          <Image
+            src="/logo.png"
+            alt="I don't know where to eat"
+            width={100}
+            height={80}
+            layout="responsive"
+          />
+        </div>
         
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold">My criteria</h2>
@@ -154,8 +177,12 @@ export default function Home() {
         {showCriteria && (
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
+            <label htmlFor="cuisine" className="block text-gray-700 text-sm font-bold mb-2">
+                Location *
+                </label>
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex-grow min-w-0 max-w-[60%]">
+                
                   <div className="relative">
                     <input
                       type="text"
