@@ -177,9 +177,9 @@ export default function Home() {
         {showCriteria && (
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
-            <label htmlFor="cuisine" className="block text-gray-700 text-sm font-bold mb-2">
-                Location *
-                </label>
+              <label htmlFor="cuisine" className="block text-gray-700 text-sm font-bold mb-2">
+                Location <span className="text-red-500">*</span>
+              </label>
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex-grow min-w-0 max-w-[60%]">
                 
@@ -216,7 +216,7 @@ export default function Home() {
             </div>
             <div className="mb-4">
               <label htmlFor="cuisine" className="block text-gray-700 text-sm font-bold mb-2">
-                The kind of restaurant I'm looking for *
+                The kind of restaurant I'm looking for <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -258,6 +258,14 @@ export default function Home() {
                   placeholder={`${index + 1}. Type name or paste link`}
                 />
               ))}
+              <button
+                type="button"
+                onClick={addRestaurantField}
+                className="mt-2 flex items-center justify-center w-full p-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-100"
+              >
+                <PlusIcon className="w-5 h-5 mr-2" />
+                Add another restaurant
+              </button>
             </div>
             <div className="flex items-center justify-center">
               <button
