@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import EmbeddedContent from './components/EmbeddedContent';
-import { ChevronDownIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/solid';
 
 export default function Home() {
   const [location, setLocation] = useState('');
@@ -14,7 +14,7 @@ export default function Home() {
   const [userLocation, setUserLocation] = useState({ lat: '37.7749', lng: '-122.4194' });
   const [embeddedUrl, setEmbeddedUrl] = useState<string | null>(null);
   const [radius, setRadius] = useState('');
-  const [showCriteria, setShowCriteria] = useState(false);
+  const [showCriteria, setShowCriteria] = useState(true);
 
   const getUserLocation = useCallback(() => {
     if ("geolocation" in navigator) {
@@ -127,6 +127,10 @@ export default function Home() {
       console.error(error);
       return null;
     }
+  };
+
+  const addRestaurantField = () => {
+    setRestaurantList([...restaurantList, '']);
   };
 
   return (
