@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import EmbeddedContent from './components/EmbeddedContent';
-import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, PlusIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 import Image from 'next/image';
 
 export default function Home() {
@@ -16,6 +16,7 @@ export default function Home() {
   const [embeddedUrl, setEmbeddedUrl] = useState<string | null>(null);
   const [radius, setRadius] = useState('');
   const [showCriteria, setShowCriteria] = useState(true);
+  const formRef = useRef<HTMLDivElement>(null);
 
   const getUserLocation = useCallback(() => {
     if ("geolocation" in navigator) {
@@ -62,12 +63,13 @@ export default function Home() {
     e.preventDefault();
     setLoading(true);
     setRecommendation(null);
+    setShowCriteria(false); // Close criteria when submitting
 
     const { lat, lng } = userLocation;
 
     // Combine all preferences
     const combinedPreferences = `Location: ${location}\nCuisine: ${cuisine}\nTransportation: ${transportation}\nRestaurant List: ${restaurantList.filter(r => r).join(', ')}`;
-    
+    console.log("This is the combined preferences:", combinedPreferences);
     try {
       const allRestaurantsInfo: { [key: string]: any } = {};
 
@@ -80,7 +82,7 @@ export default function Home() {
           }
         }
       }
-
+      console.log("This is the allRestaurantsInfo:", allRestaurantsInfo);
       const recommendation = await recommendationToUser(combinedPreferences, allRestaurantsInfo);
       setRecommendation(recommendation);
     } catch (error) {
@@ -148,9 +150,15 @@ export default function Home() {
     setRestaurantList([...restaurantList, '']);
   };
 
+  const handleAnotherOne = () => {
+    setShowCriteria(true); // Show criteria when clicking "Another one"
+    setRecommendation(null); // Clear the current recommendation
+    formRef.current?.scrollIntoView({ behavior: 'smooth' }); // Scroll to the top smoothly
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-white">
-      <div className="w-full max-w-md bg-yellow-50 p-6 rounded-lg shadow-lg">
+      <div className="w-full max-w-md bg-yellow-50 p-6 rounded-lg shadow-lg" ref={formRef}>
         <div className="mb-4 text-center">
           <Image
             src="/logo.png"
@@ -285,9 +293,21 @@ export default function Home() {
         )}
 
         {recommendation && (
-          <div className="mt-4 text-center">
-            <p className="text-green-500 text-lg font-bold">Recommendation: {recommendation}</p>
+          <div className="mt-6 bg-white rounded-lg shadow-md p-4">
+            <h2 className="text-xl font-bold mb-2 flex items-center justify-center">
+              <span className="mr-2">✨</span>
+              Recommendation
+              <span className="ml-2">✨</span>
+            </h2>
+            <p className="text-gray-700 mb-4">{recommendation}</p>
             {embeddedUrl && <EmbeddedContent url={embeddedUrl} />}
+            <button
+              onClick={handleAnotherOne}
+              className="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full flex items-center justify-center"
+            >
+              <ArrowPathIcon className="w-5 h-5 mr-2" />
+              Another one
+            </button>
           </div>
         )}
       </div>
