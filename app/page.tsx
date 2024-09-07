@@ -1,20 +1,22 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import EmbeddedContent from './components/EmbeddedContent';
+import { ChevronDownIcon } from '@heroicons/react/24/solid';
 
 export default function Home() {
-  const [cuisine, setCuisine] = useState('');
   const [location, setLocation] = useState('');
+  const [cuisine, setCuisine] = useState('');
   const [transportation, setTransportation] = useState('');
-  const [restaurantList, setRestaurantList] = useState('');
-  const [otherPreferences, setOtherPreferences] = useState('');
+  const [restaurantList, setRestaurantList] = useState(['', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState({ lat: '37.7749', lng: '-122.4194' });
   const [embeddedUrl, setEmbeddedUrl] = useState<string | null>(null);
+  const [radius, setRadius] = useState('');
+  const [showCriteria, setShowCriteria] = useState(false);
 
-  useEffect(() => {
+  const getUserLocation = useCallback(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -23,46 +25,38 @@ export default function Home() {
             lng: position.coords.longitude.toString()
           });
           console.log("User location:", position.coords.latitude, position.coords.longitude);
+          // You might want to update the location input or perform other actions here
+          setLocation("Current Location");
         },
         (error) => {
           console.error("Error getting location:", error);
+          alert("Unable to retrieve your location. Please enter it manually.");
         }
       );
     } else {
       console.log("Geolocation is not available in this browser.");
+      alert("Geolocation is not supported by your browser. Please enter your location manually.");
     }
   }, []);
+
+  useEffect(() => {
+    getUserLocation();
+  }, [getUserLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setRecommendation(null);
 
-    // Log user input including location
-    // console.log('User Input:');
-    // console.log('Cuisine:', cuisine);
-    // console.log('Location:', location);
-    // console.log('Transportation:', transportation);
-    // console.log('Restaurant List:', restaurantList);
-    // console.log('Other Preferences:', otherPreferences);
-    // console.log('User Location:', userLocation);
-
-    // Use userLocation in your API calls or logic
     const { lat, lng } = userLocation;
 
     // Combine all preferences
-    const combinedPreferences = `Cuisine: ${cuisine}\nLocation: ${location}\nTransportation: ${transportation}\nOther Preferences: ${otherPreferences}`;
-    console.log('Combined Preferences:', combinedPreferences);
+    const combinedPreferences = `Location: ${location}\nCuisine: ${cuisine}\nTransportation: ${transportation}\nRestaurant List: ${restaurantList.filter(r => r).join(', ')}`;
     
     try {
-      const scrapedInfo = await extractLinksAndScrape(restaurantList);
-      const summarizedList = await summarizeRestaurants(restaurantList);
-      console.log("Summarized list:", summarizedList);
-      const places = summarizedList.split(",");
-      console.log("Places:", places);
       const allRestaurantsInfo: { [key: string]: any } = {};
 
-      for (const place of places) {
+      for (const place of restaurantList.filter(r => r)) {
         const placeId = await getPlaceId(place.trim());
         if (placeId) {
           const details = await getPlaceDetails(placeId);
@@ -72,113 +66,12 @@ export default function Home() {
         }
       }
 
-      // Merge scraped info with allRestaurantsInfo
-      Object.assign(allRestaurantsInfo, scrapedInfo);
-
       const recommendation = await recommendationToUser(combinedPreferences, allRestaurantsInfo);
       setRecommendation(recommendation);
     } catch (error) {
       console.log(error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const extractLinksAndScrape = async (text: string) => {
-    const urlRegex = /(https?:\/\/)?(?:(?:maps\.app\.goo\.gl|(?:www\.)?google\.com\/maps)\/[^\s]+)/g;
-    const links = text.match(urlRegex) || [];
-    console.log("Found links:", links);
-    const scrapedInfo: { [key: string]: string } = {};
-
-    for (const link of links) {
-      try {
-        if (link.includes('maps.app.goo.gl') || link.includes('google.com/maps')) {
-          let expandedUrl = link;
-          if (link.includes('maps.app.goo.gl')) {
-            expandedUrl = await expandShortUrl(link);
-            console.log("Expanded URL:", expandedUrl);
-          }
-          const placeId = await getPlaceIdFromUrl(expandedUrl);
-          if (placeId) {
-            const details = await getPlaceDetails(placeId);
-            console.log("Details, placeId:", details, placeId);
-            if (details) {
-              scrapedInfo[link] = JSON.stringify(details);
-              console.log(`Scraped information for ${link}:`, details);
-            }
-          }
-        } else {
-          // Handle other types of links if needed
-          console.log(`Skipping non-Google Maps link: ${link}`);
-        }
-      } catch (error) {
-        console.error(`Error processing ${link}:`, error);
-      }
-    }
-
-    return scrapedInfo;
-  };
-
-  const expandShortUrl = async (shortUrl: string): Promise<string> => {
-    try {
-      // Ensure the URL starts with https://
-      if (!shortUrl.startsWith('http')) {
-        shortUrl = 'https://' + shortUrl;
-      }
-  
-      const response = await axios.get('/api/expandUrl', { params: { url: shortUrl } });
-      return response.data.expandedUrl;
-    } catch (error) {
-      console.error('Error expanding short URL:', error);
-      return shortUrl;
-    }
-  };
-
-  const getPlaceIdFromUrl = async (url: string): Promise<string | null> => {
-    try {
-      // Extract place name from the URL
-      const nameMatch = url.match(/\/maps\/place\/([^/@]+)/);
-      if (!nameMatch) {
-        console.error('Could not extract place name from URL');
-        return null;
-      }
-
-      const placeName = decodeURIComponent(nameMatch[1]);
-      console.log('Extracted place name:', placeName);
-
-      // Extract latitude and longitude from the URL (if available), otherwise defaults to San Francisco coordinates
-      const coordMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-      let lat = '37.7749';  // Default to San Francisco
-      let lng = '-122.4194';
-      if (coordMatch) {
-        [, lat, lng] = coordMatch;
-      }
-      
-      //TODO: I will get the current location from the user. 
-
-      
-      console.log("Call find place API with Lat, lng and place name:", lat, lng, placeName);
-      // Make request to Find Place API
-      
-      const response = await axios.get('/api/findplace', {
-        params: {
-          input: placeName,
-          inputtype: 'textquery',
-          locationbias: `circle:5000@${lat},${lng}`,
-        }
-      });
-
-      console.log('Find Place API response:', response.data);
-
-      if (response.data.candidates && response.data.candidates.length > 0) {
-        return response.data.candidates[0].place_id;
-      } else {
-        console.error('No place found');
-        return null;
-      }
-    } catch (error) {
-      console.error('Error getting place ID from URL:', error);
-      return null;
     }
   };
 
@@ -196,16 +89,6 @@ export default function Home() {
     try {
       const response = await axios.get('/api/getPlaceDetails', { params: { placeId } });
       return response.data;
-    } catch (error) {
-      console.error(error);
-      return null;
-    }
-  };
-
-  const summarizeRestaurants = async (restaurants: string) => {
-    try {
-      const response = await axios.post('/api/openai', { prompt: `Here is a list of restaurants:\n${restaurants}\n\nSummarize the list by providing just the restaurant names in format restaurant1, restaurant2, etc. If you could not find any restaurants, please return ""` });
-      return response.data.response;
     } catch (error) {
       console.error(error);
       return null;
@@ -247,84 +130,114 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gray-100">
-      <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg">
-        <h1 className="text-3xl font-bold mb-6 text-center">FoodTrail</h1>
-        <h2 className="text-xl font-semibold mb-4">Criteria</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="cuisine" className="block text-gray-700 text-sm font-bold mb-2">
-              Cuisine
-            </label>
-            <input
-              type="text"
-              id="cuisine"
-              value={cuisine}
-              onChange={(e) => setCuisine(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded bg-yellow-50"
-              placeholder="Type your preferred cuisine here"
+    <div className="min-h-screen flex items-center justify-center p-6 bg-white">
+      <div className="w-full max-w-md bg-yellow-50 p-6 rounded-lg shadow-lg">
+        <h1 className="text-3xl font-bold mb-6 text-center">I don't know where to eat</h1>
+        
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold">My criteria</h2>
+          <button 
+            onClick={() => setShowCriteria(!showCriteria)}
+            className="p-1 rounded-full hover:bg-gray-200 transition-colors duration-200"
+            aria-label={showCriteria ? "Hide criteria" : "Show criteria"}
+          >
+            <ChevronDownIcon 
+              className={`w-6 h-6 text-gray-600 transform transition-transform duration-200 ${showCriteria ? 'rotate-180' : ''}`}
             />
-          </div>
-          <div className="mb-4">
-            <label htmlFor="location" className="block text-gray-700 text-sm font-bold mb-2">
-              Location (City)
-            </label>
-            <input
-              type="text"
-              id="location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded bg-yellow-50"
-              placeholder="e.g. near this subway station, under 30 mins for travel..."
-            />
-          </div>
-          <div className="mb-4">
-            <label htmlFor="transportation" className="block text-gray-700 text-sm font-bold mb-2">
-              Transportation/Distance (optional)
-            </label>
-            <input
-              type="text"
-              id="transportation"
-              value={transportation}
-              onChange={(e) => setTransportation(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded bg-yellow-50"
-              placeholder="e.g. near this subway station, under 30 mins for travel..."
-            />
-          </div>
-          <div className="mb-4">
-            <label htmlFor="restaurantList" className="block text-gray-700 text-sm font-bold mb-2">
-              My list (optional)
-            </label>
-            <textarea
-              id="restaurantList"
-              value={restaurantList}
-              onChange={(e) => setRestaurantList(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded bg-yellow-50"
-              placeholder="Paste your list here"
-            />
-          </div>
-          <div className="mb-4">
-            <label htmlFor="otherPreferences" className="block text-gray-700 text-sm font-bold mb-2">
-              Notes and other preferences
-            </label>
-            <textarea
-              id="otherPreferences"
-              value={otherPreferences}
-              onChange={(e) => setOtherPreferences(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded bg-yellow-50"
-              placeholder="Enter other preferences or special requests..."
-              rows={3}
-            />
-          </div>
-          <div className="flex items-center justify-center">
-            <button
-              type="submit"
-              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full"
-            >
-              Give me a recommendation
-            </button>
-          </div>
-        </form>
+          </button>
+        </div>
+
+        {showCriteria && (
+          <form onSubmit={handleSubmit}>
+            <div className="mb-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex-grow min-w-0 max-w-[60%]">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      id="location"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      className="w-full h-10 p-2 pr-24 border border-gray-300 rounded text-sm"
+                      placeholder="Type your zip code"
+                    />
+                    <button 
+                      type="button" 
+                      className="absolute right-1 top-1/2 transform -translate-y-1/2 bg-yellow-400 text-black px-2 py-1 rounded text-xs font-medium"
+                      onClick={getUserLocation}
+                    >
+                      Locate me
+                    </button>
+                  </div>
+                </div>
+                <span className="text-sm whitespace-nowrap">or</span>
+                <div className="flex-shrink-0">
+                  <input
+                    type="text"
+                    id="radius"
+                    value={radius}
+                    onChange={(e) => setRadius(e.target.value)}
+                    className="w-28 h-10 p-2 border border-gray-300 rounded text-sm"
+                    placeholder="Within radius"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="mb-4">
+              <label htmlFor="cuisine" className="block text-gray-700 text-sm font-bold mb-2">
+                The kind of restaurant I'm looking for *
+              </label>
+              <input
+                type="text"
+                id="cuisine"
+                value={cuisine}
+                onChange={(e) => setCuisine(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded"
+                placeholder="E.g. Chinese, fun vibe, near the A train, high ratings"
+              />
+            </div>
+            <div className="mb-4">
+              <label htmlFor="transportation" className="block text-gray-700 text-sm font-bold mb-2">
+                How I get there
+              </label>
+              <input
+                type="text"
+                id="transportation"
+                value={transportation}
+                onChange={(e) => setTransportation(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded"
+                placeholder="E.g. Less than 30 mins travel, by A train subway"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2">
+                Some restaurants I have in mind
+              </label>
+              {restaurantList.map((restaurant, index) => (
+                <input
+                  key={index}
+                  type="text"
+                  value={restaurant}
+                  onChange={(e) => {
+                    const newList = [...restaurantList];
+                    newList[index] = e.target.value;
+                    setRestaurantList(newList);
+                  }}
+                  className="w-full p-2 border border-gray-300 rounded mb-2"
+                  placeholder={`${index + 1}. Type name or paste link`}
+                />
+              ))}
+            </div>
+            <div className="flex items-center justify-center">
+              <button
+                type="submit"
+                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full"
+              >
+                Give me a recommendation
+              </button>
+            </div>
+          </form>
+        )}
 
         {loading && (
           <div className="mt-4 text-center">
