@@ -296,19 +296,19 @@ export default function Home() {
         )}
 
         {recommendation && (
-          <div className="mt-8 bg-white rounded-lg shadow-md p-4"> {/* 32px margin top */}
-            <h2 className="text-xl font-bold mb-2 flex items-center justify-center">
+          <div className="mt-8 bg-white rounded-lg shadow-md p-4">
+            <h2 className="text-xl font-bold mb-4 flex items-center justify-center">
               <span className="mr-2">✨</span>
               Recommendation
               <span className="ml-2">✨</span>
             </h2>
-            <p className="text-gray-700 mb-4">{recommendation}</p>
+            <p className="text-gray-700 mb-4 break-words">{recommendation}</p>
             {embeddedUrl && (
               <>
-                <a href={embeddedUrl} className="text-blue-500 hover:underline mb-4 block">
+                <a href={embeddedUrl} className="text-blue-500 hover:underline mb-4 block break-all">
                   {embeddedUrl}
                 </a>
-                <div className="mb-8"> {/* 32px margin bottom */}
+                <div className="mb-8">
                   <EmbeddedContent url={embeddedUrl} />
                 </div>
               </>
