@@ -9,7 +9,7 @@ export default function Home() {
   const [location, setLocation] = useState('');
   const [cuisine, setCuisine] = useState('');
   const [transportation, setTransportation] = useState('');
-  const [restaurantList, setRestaurantList] = useState(['', '', '', '', '']);
+  const [restaurantList, setRestaurantList] = useState(['']);
   const [loading, setLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState({ lat: '37.7749', lng: '-122.4194' });
@@ -159,7 +159,7 @@ export default function Home() {
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-white">
       <div className="w-full max-w-md bg-yellow-50 p-6 rounded-lg shadow-lg" ref={formRef}>
-        <div className="mb-4 text-center">
+        <div className="mb-8 text-center"> {/* 32px margin bottom */}
           <Image
             src="/logo.png"
             alt="I don't know where to eat"
@@ -183,9 +183,9 @@ export default function Home() {
         </div>
 
         {showCriteria && (
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label htmlFor="cuisine" className="block text-gray-700 text-sm font-bold mb-2">
+          <form onSubmit={handleSubmit} className="space-y-6"> {/* 24px space between sections */}
+            <div>
+              <label htmlFor="location" className="block text-gray-700 text-sm font-bold mb-2">
                 Location <span className="text-red-500">*</span>
               </label>
               <div className="flex flex-wrap items-center gap-2">
@@ -222,10 +222,11 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div className="mb-4">
+            <div>
               <label htmlFor="cuisine" className="block text-gray-700 text-sm font-bold mb-2">
                 The kind of restaurant I'm looking for <span className="text-red-500">*</span>
               </label>
+              <div className="text-gray-600 text-xs mb-1">Tell me about the cuisine, vibe, reservations, etc.</div>
               <input
                 type="text"
                 id="cuisine"
@@ -235,10 +236,11 @@ export default function Home() {
                 placeholder="E.g. Chinese, fun vibe, near the A train, high ratings"
               />
             </div>
-            <div className="mb-4">
+            <div>
               <label htmlFor="transportation" className="block text-gray-700 text-sm font-bold mb-2">
                 How I get there
               </label>
+              <div className="text-gray-600 text-xs mb-1">Provide me the names or links of the restaurants</div>
               <input
                 type="text"
                 id="transportation"
@@ -248,10 +250,11 @@ export default function Home() {
                 placeholder="E.g. Less than 30 mins travel, by A train subway"
               />
             </div>
-            <div className="mb-4">
+            <div>
               <label className="block text-gray-700 text-sm font-bold mb-2">
                 Some restaurants I have in mind
               </label>
+              <div className="text-gray-600 text-xs mb-1">Tell me about travel time, transportation mode and details</div>
               {restaurantList.map((restaurant, index) => (
                 <input
                   key={index}
@@ -275,12 +278,12 @@ export default function Home() {
                 Add another restaurant
               </button>
             </div>
-            <div className="flex items-center justify-center">
+            <div className="pt-4"> {/* 16px padding top before submit button */}
               <button
                 type="submit"
-                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full"
+                className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded w-full"
               >
-                Give me a recommendation
+                Gimme something
               </button>
             </div>
           </form>
