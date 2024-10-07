@@ -296,17 +296,26 @@ export default function Home() {
         )}
 
         {recommendation && (
-          <div className="mt-6 bg-white rounded-lg shadow-md p-4">
+          <div className="mt-8 bg-white rounded-lg shadow-md p-4"> {/* 32px margin top */}
             <h2 className="text-xl font-bold mb-2 flex items-center justify-center">
               <span className="mr-2">✨</span>
               Recommendation
               <span className="ml-2">✨</span>
             </h2>
             <p className="text-gray-700 mb-4">{recommendation}</p>
-            {embeddedUrl && <EmbeddedContent url={embeddedUrl} />}
+            {embeddedUrl && (
+              <>
+                <a href={embeddedUrl} className="text-blue-500 hover:underline mb-4 block">
+                  {embeddedUrl}
+                </a>
+                <div className="mb-8"> {/* 32px margin bottom */}
+                  <EmbeddedContent url={embeddedUrl} />
+                </div>
+              </>
+            )}
             <button
               onClick={handleAnotherOne}
-              className="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full flex items-center justify-center"
+              className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded w-full flex items-center justify-center"
             >
               <ArrowPathIcon className="w-5 h-5 mr-2" />
               Another one
