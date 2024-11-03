@@ -167,7 +167,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-white">
-      <div className="w-full max-w-md bg-yellow-50 p-6 rounded-lg shadow-lg" ref={formRef}>
+      <div className="w-full max-w-md bg-[#F9F0E8] p-6 rounded-lg shadow-lg" ref={formRef}>
         <div className="mb-8 text-center"> {/* 32px margin bottom */}
           <Image
             src="/logo.png"
@@ -290,7 +290,7 @@ export default function Home() {
             <div className="pt-4"> {/* 16px padding top before submit button */}
               <button
                 type="submit"
-                className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded w-full"
+                className="bg-[#347700] hover:bg-[#2b6200] text-white font-bold py-3 px-4 rounded w-full flex items-center justify-center"
               >
                 Gimme something
               </button>
@@ -339,7 +339,7 @@ export default function Home() {
             )}
             <button
               onClick={handleAnotherOne}
-              className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded w-full flex items-center justify-center"
+              className="bg-[#347700] hover:bg-[#2b6200] text-white font-bold py-3 px-4 rounded w-full flex items-center justify-center"
             >
               <ArrowPathIcon className="w-5 h-5 mr-2" />
               Another one
