@@ -72,11 +72,14 @@ export default function Home() {
     console.log("This is the combined preferences:", combinedPreferences);
     try {
       const allRestaurantsInfo: { [key: string]: any } = {};
-
+      
+      let placeId: string | null = null;
       for (const place of restaurantList.filter(r => r)) {
-        const placeId = await getPlaceId(place.trim());
+        placeId = await getPlaceId(place.trim());
+        console.log("This is the placeId:", placeId);
         if (placeId) {
           const details = await getPlaceDetails(placeId);
+          console.log("This is the details:", details);
           if (details) {
             allRestaurantsInfo[place.trim()] = details;
           }
@@ -84,7 +87,13 @@ export default function Home() {
       }
       console.log("This is the allRestaurantsInfo:", allRestaurantsInfo);
       const recommendation = await recommendationToUser(combinedPreferences, allRestaurantsInfo);
-      setRecommendation(recommendation);
+      if (placeId) {
+        const mapUrl = `https://www.google.com/maps/place/?q=place_id:${placeId}`;
+        setRecommendation(recommendation + "\n\n" + 
+          "🗺️ Google Maps: " + mapUrl);
+      } else {
+        setRecommendation(recommendation);
+      }
     } catch (error) {
       console.log(error);
     } finally {
@@ -302,12 +311,27 @@ export default function Home() {
               Recommendation
               <span className="ml-2">✨</span>
             </h2>
-            <p className="text-gray-700 mb-4 break-words">{recommendation}</p>
+            <p className="text-gray-700 mb-4 break-words whitespace-pre-line">
+              {recommendation.split(/\b(https?:\/\/[^\s]+)\b/).map((part, index) => {
+                // Check if the part is a URL
+                if (part.match(/^https?:\/\//)) {
+                  return (
+                    <a 
+                      key={index}
+                      href={part}
+                      className="text-blue-500 hover:underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {part}
+                    </a>
+                  );
+                }
+                return part;
+              })}
+            </p>
             {embeddedUrl && (
               <>
-                <a href={embeddedUrl} className="text-blue-500 hover:underline mb-4 block break-all">
-                  {embeddedUrl}
-                </a>
                 <div className="mb-8">
                   <EmbeddedContent url={embeddedUrl} />
                 </div>
